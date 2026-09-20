@@ -17,3 +17,10 @@ artifacts/*
 
 .ipynb_checkpoints/
 notebooks/executed/
+
+# Generated local/build files
+.next/
+.vinext/
+.vite/
+node_modules/
+next-env.d.ts

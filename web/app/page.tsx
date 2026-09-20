@@ -72,7 +72,7 @@ type DashboardData = {
   engines: Engine[];
 };
 
-type View = "overview" | "maintenance" | "model";
+type View = "overview" | "maintenance" | "model" | "research";
 type RiskFilter = "all" | "critical" | "watch" | "stable";
 
 const compactCurrency = new Intl.NumberFormat("en-US", {
@@ -179,11 +179,11 @@ export default function Home() {
   const distribution = useMemo(() => {
     if (!data) return [];
     const buckets = [
-      { label: "0–20%", min: 0, max: 0.2, count: 0, color: "#2f766d" },
-      { label: "20–40%", min: 0.2, max: 0.4, count: 0, color: "#6b8c72" },
-      { label: "40–60%", min: 0.4, max: 0.6, count: 0, color: "#c79a38" },
-      { label: "60–80%", min: 0.6, max: 0.8, count: 0, color: "#d26945" },
-      { label: "80–100%", min: 0.8, max: 1.01, count: 0, color: "#b5473e" },
+      { label: "0â€“20%", min: 0, max: 0.2, count: 0, color: "#2f766d" },
+      { label: "20â€“40%", min: 0.2, max: 0.4, count: 0, color: "#6b8c72" },
+      { label: "40â€“60%", min: 0.4, max: 0.6, count: 0, color: "#c79a38" },
+      { label: "60â€“80%", min: 0.6, max: 0.8, count: 0, color: "#d26945" },
+      { label: "80â€“100%", min: 0.8, max: 1.01, count: 0, color: "#b5473e" },
     ];
     data.engines.forEach((engine) => {
       const bucket = buckets.find((item) => engine.risk >= item.min && engine.risk < item.max);
@@ -212,10 +212,11 @@ export default function Home() {
   }
 
   const nav = [
-    { id: "overview" as const, label: "Fleet overview", icon: CircleGauge },
-    { id: "maintenance" as const, label: "Maintenance", icon: Wrench },
-    { id: "model" as const, label: "Model health", icon: BarChart3 },
-  ];
+  { id: "overview" as const, label: "Fleet overview", icon: CircleGauge },
+  { id: "maintenance" as const, label: "Maintenance", icon: Wrench },
+  { id: "model" as const, label: "Model health", icon: BarChart3 },
+  { id: "research" as const, label: "Research findings", icon: BarChart3 },
+];
 
   const queue = data.engines
     .filter((engine) => engine.risk >= threshold)
@@ -227,7 +228,7 @@ export default function Home() {
         <div className="brand">
           <div className="brand-mark"><Gauge size={20} /></div>
           <div>
-            <strong>AERO<span className="brand-accent">PULSE</span></strong>
+            <strong>ENGINE<span className="brand-accent">GUARD</span></strong>
             <span className="brand-subtitle">Engine Health Intelligence</span>
           </div>
         </div>
@@ -254,7 +255,15 @@ export default function Home() {
         <header className="topbar">
           <div>
             <p className="eyebrow">Operations / {nav.find((item) => item.id === view)?.label}</p>
-            <h1>{view === "overview" ? "Fleet overview" : view === "maintenance" ? "Maintenance queue" : "Model health"}</h1>
+         <h1>
+  {view === "overview"
+    ? "Fleet overview"
+    : view === "maintenance"
+      ? "Maintenance queue"
+      : view === "model"
+        ? "Model health"
+        : "Research findings"}
+</h1>
           </div>
           <div className="topbar-actions">
             <div className="sync-state"><Database size={15} /><span>100 engines synced</span></div>
@@ -377,7 +386,7 @@ export default function Home() {
             <section className="metric-grid model-metrics">
               <Metric icon={Gauge} label="MAE" value={data.metrics.test_regression.mae.toFixed(2)} detail="cycles" />
               <Metric icon={Activity} label="RMSE" value={data.metrics.test_regression.rmse.toFixed(2)} detail="cycles" />
-              <Metric icon={BarChart3} label="R²" value={data.metrics.test_regression.r2.toFixed(3)} detail="official test set" tone="positive" />
+              <Metric icon={BarChart3} label="RÂ²" value={data.metrics.test_regression.r2.toFixed(3)} detail="official test set" tone="positive" />
               <Metric icon={ShieldCheck} label="NASA score" value={data.metrics.test_regression.nasa_score.toFixed(2)} detail="lower is better" />
             </section>
             <section className="model-grid">
@@ -411,6 +420,239 @@ export default function Home() {
             </section>
           </>
         )}
+
+        {view === "research" && (
+          <>
+            <section className="metric-grid">
+              <Metric
+                icon={BarChart3}
+                label="Best observed window"
+                value="30 cycles"
+                detail="NASA C-MAPSS FD001"
+                tone="positive"
+              />
+              <Metric
+                icon={Gauge}
+                label="Best observed MAE"
+                value="13.15"
+                detail="cycles"
+              />
+              <Metric
+                icon={Activity}
+                label="Best observed RÂ²"
+                value="0.834"
+                detail="test set"
+              />
+              <Metric
+                icon={ShieldCheck}
+                label="NASA score"
+                value="453.17"
+                detail="lower is better"
+                tone="positive"
+              />
+            </section>
+
+            <section className="panel fleet-panel">
+              <div className="panel-heading">
+                <div>
+                  <h2>Temporal Window Experiment</h2>
+                  <p>Effect of recent sensor-history length on RUL prediction</p>
+                </div>
+                <span className="data-chip">50 estimators</span>
+              </div>
+
+              <div className="table-wrap compact">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Window</th>
+                      <th>Selected Model</th>
+                      <th>MAE â†“</th>
+                      <th>RMSE â†“</th>
+                      <th>RÂ² â†‘</th>
+                      <th>NASA Score â†“</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><strong>5 cycles</strong></td>
+                      <td>Random Forest</td>
+                      <td>13.49</td>
+                      <td>18.61</td>
+                      <td>0.799</td>
+                      <td>630.41</td>
+                    </tr>
+                    <tr>
+                      <td><strong>10 cycles</strong></td>
+                      <td>Random Forest</td>
+                      <td>14.35</td>
+                      <td>19.31</td>
+                      <td>0.784</td>
+                      <td>707.65</td>
+                    </tr>
+                    <tr>
+                      <td><strong>20 cycles</strong></td>
+                      <td>Random Forest</td>
+                      <td>13.72</td>
+                      <td>18.58</td>
+                      <td>0.800</td>
+                      <td>706.23</td>
+                    </tr>
+                    <tr>
+                      <td><strong>30 cycles</strong></td>
+                      <td><strong>Hist. Gradient Boosting</strong></td>
+                      <td><strong>13.15</strong></td>
+                      <td><strong>16.91</strong></td>
+                      <td><strong>0.834</strong></td>
+                      <td><strong>453.17</strong></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            <section className="overview-grid">
+              <div className="panel">
+                <div className="panel-heading">
+                  <div>
+                    <h2>Feature Ablation Study</h2>
+                    <p>Effect of removing time_in_cycles</p>
+                  </div>
+                  <span className="data-chip">30-cycle window</span>
+                </div>
+
+                <div className="outcome-grid">
+                  <div>
+                    <span>With cycle feature</span>
+                    <strong>NASA 453.17</strong>
+                  </div>
+                  <div>
+                    <span>Without cycle feature</span>
+                    <strong>NASA 687.37</strong>
+                  </div>
+                  <div>
+                    <span>MAE change</span>
+                    <strong>13.15 â†’ 13.27</strong>
+                  </div>
+                  <div>
+                    <span>RÂ² change</span>
+                    <strong>0.834 â†’ 0.820</strong>
+                  </div>
+                </div>
+
+                <p style={{ marginTop: "18px" }}>
+                  Removing <strong>time_in_cycles</strong> degraded the
+                  observed test performance, particularly the NASA score,
+                  indicating that cycle-index information contributes
+                  predictive information in the evaluated FD001 setup.
+                </p>
+              </div>
+
+              <div className="panel">
+                <div className="panel-heading">
+                  <div>
+                    <h2>Explainable AI</h2>
+                    <p>Global SHAP analysis across 100 test engines</p>
+                  </div>
+                  <span className="data-chip">SHAP</span>
+                </div>
+
+                <div className="feature-list">
+                  <div className="feature-row">
+                    <span>1</span>
+                    <div>
+                      <strong>time_in_cycles</strong>
+                    </div>
+                    <em>11.10</em>
+                  </div>
+
+                  <div className="feature-row">
+                    <span>2</span>
+                    <div>
+                      <strong>sensor_3_mean_30</strong>
+                    </div>
+                    <em>9.08</em>
+                  </div>
+
+                  <div className="feature-row">
+                    <span>3</span>
+                    <div>
+                      <strong>sensor_2_mean_30</strong>
+                    </div>
+                    <em>4.12</em>
+                  </div>
+
+                  <div className="feature-row">
+                    <span>4</span>
+                    <div>
+                      <strong>sensor_11_std_30</strong>
+                    </div>
+                    <em>2.20</em>
+                  </div>
+
+                  <div className="feature-row">
+                    <span>5</span>
+                    <div>
+                      <strong>sensor_14_std_30</strong>
+                    </div>
+                    <em>2.11</em>
+                  </div>
+                </div>
+
+                <p style={{ marginTop: "18px" }}>
+                  SHAP values indicate model-level feature influence. They do
+                  not establish physical causation.
+                </p>
+              </div>
+            </section>
+
+            <section className="panel">
+              <div className="panel-heading">
+                <div>
+                  <h2>Research Conclusion</h2>
+                  <p>Observed findings from the evaluated FD001 experiments</p>
+                </div>
+                <CheckCircle2 size={20} className="positive-icon" />
+              </div>
+
+              <p style={{ fontSize: "15px", lineHeight: 1.75 }}>
+                The experiments demonstrate that temporal feature-window
+                selection affects turbofan RUL prediction performance. Among
+                the tested 5-, 10-, 20- and 30-cycle windows, the 30-cycle
+                configuration produced the strongest observed test results,
+                achieving an MAE of 13.15 cycles, RMSE of 16.91 cycles,
+                RÂ² of 0.834 and NASA score of 453.17.
+              </p>
+
+              <p style={{ fontSize: "15px", lineHeight: 1.75 }}>
+                The results also show that a longer history does not
+                automatically improve performance. The selected regression
+                model changed with the temporal representation, with
+                Histogram Gradient Boosting selected for the 30-cycle
+                configuration according to the validation NASA score.
+              </p>
+
+              <p style={{ fontSize: "15px", lineHeight: 1.75 }}>
+                The ablation experiment further showed that removing
+                <strong> time_in_cycles </strong>
+                degraded test performance. SHAP analysis identified
+                <strong> time_in_cycles </strong>
+                and
+                <strong> sensor_3_mean_30 </strong>
+                as the two most influential features by mean absolute SHAP
+                value across the 100 test engines.
+              </p>
+
+              <p style={{ fontSize: "13px", lineHeight: 1.6, opacity: 0.75 }}>
+                Scope: conclusions apply to the evaluated NASA C-MAPSS FD001
+                dataset and experimental configuration. The 30-cycle window
+                should not be treated as universally optimal for other
+                datasets or engine types.
+              </p>
+            </section>
+              </>
+        )}
+
       </main>
 
       {selected && <EngineDrawer engine={selected} threshold={threshold} onClose={() => setSelected(null)} />}

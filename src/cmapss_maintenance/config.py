@@ -32,6 +32,8 @@ TARGET_COLUMN = "rul"
 class ExperimentConfig:
     dataset: str = DATASET_NAME
     rul_cap: int = 125
+    feature_window: int = 30
+    use_time_in_cycles: bool = True
     maintenance_horizon: int = 30
     validation_size: float = 0.2
     random_state: int = 42

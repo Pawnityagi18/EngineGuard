@@ -8,6 +8,7 @@ from pathlib import Path
 import joblib
 import numpy as np
 
+from cmapss_maintenance.config import ExperimentConfig
 from cmapss_maintenance.data import add_train_rul, load_fd001
 from cmapss_maintenance.features import add_health_features, select_feature_columns
 
@@ -35,8 +36,9 @@ def main() -> None:
     bundle = joblib.load(models_path)
     train, test, truth = load_fd001(args.data_dir)
     base_features = select_feature_columns(add_train_rul(train))
-    engineered = add_health_features(test, base_features)
     features = bundle["feature_columns"]
+    window = ExperimentConfig().feature_window
+    engineered = add_health_features(test, base_features, window=window)
 
     rul_prediction = np.clip(bundle["regression_model"].predict(engineered[features]), 0, None)
     risk = bundle["maintenance_model"].predict_proba(engineered[features])[:, 1]

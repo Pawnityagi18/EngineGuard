@@ -95,9 +95,13 @@ def run_experiment(
     """Train, select, refit, and evaluate RUL and maintenance models."""
     config = config or ExperimentConfig()
     base_features = select_feature_columns(train)
-    train_engineered = add_health_features(train, base_features)
-    test_engineered = add_health_features(test, base_features)
+    if not config.use_time_in_cycles:
+        base_features = [column for column in base_features if column != "time_in_cycles"]
+    train_engineered = add_health_features(train, base_features, window=config.feature_window)
+    test_engineered = add_health_features(test, base_features, window=config.feature_window)
     feature_columns = select_feature_columns(train_engineered)
+    if not config.use_time_in_cycles:
+        feature_columns = [column for column in feature_columns if column != "time_in_cycles"]
 
     train_indices, validation_indices = _split_by_engine(train_engineered, config)
     development = train_engineered.iloc[train_indices]

@@ -1,192 +1,551 @@
-# NASA C-MAPSS Predictive Maintenance
+# EngineGuard
 
-[![CI](https://github.com/Saroswat/nasa-cmapss-predictive-maintenance/actions/workflows/ci.yml/badge.svg)](https://github.com/Saroswat/nasa-cmapss-predictive-maintenance/actions/workflows/ci.yml)
+## Explainable AI-Based Predictive Maintenance and Remaining Useful Life Estimation for Turbofan Engines
 
-![AeroPulse engine health intelligence](web/public/og.png)
+EngineGuard is an AI-based predictive-maintenance system built around the NASA C-MAPSS FD001 turbofan-engine dataset.
 
-A reproducible remaining-useful-life (RUL) and cost-aware maintenance workflow for NASA's C-MAPSS FD001 turbofan benchmark. This is a modernized continuation of my B.Tech eighth-semester project.
+The system uses historical engine operating data and sensor measurements to:
 
-## What this project does
+- estimate **Remaining Useful Life (RUL)** in engine cycles,
+- estimate **maintenance risk**,
+- identify engines that may require maintenance soon,
+- compare different temporal sensor-history windows,
+- explain model predictions using **Explainable AI (SHAP)**,
+- and present the results through an interactive web dashboard.
 
-- Downloads the official C-MAPSS archive from NASA and verifies the FD001 file checksums.
-- Builds piecewise-linear RUL targets capped at 125 cycles.
-- Adds causal five-cycle rolling sensor features without using future observations.
-- Keeps complete engines together during model selection to prevent train/validation leakage.
-- Compares Random Forest and histogram gradient boosting regressors using NASA's asymmetric score.
-- Learns a maintenance-risk classifier and selects its decision threshold from an explicit cost matrix.
-- Produces predictions, metrics, trained models, and publication-ready plots.
-- Presents verified fleet risk, maintenance queues, and model health in a responsive web dashboard.
-- Runs on macOS, Windows, and Linux with Python 3.11 or newer.
+> **Scope:** The reported research findings apply to the evaluated NASA C-MAPSS FD001 dataset and the experimental configuration described below. The results should not be treated as universally optimal for other datasets or engine types.
 
-## Quick start
+---
 
-### macOS Terminal
+## 1. Problem Statement
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/Saroswat/nasa-cmapss-predictive-maintenance/main/scripts/setup-macos.sh | bash
-```
+Traditional maintenance strategies can be:
 
-### Windows PowerShell
+- **Corrective:** maintain after failure.
+- **Preventive:** maintain at a predefined interval.
+- **Predictive:** use data to estimate the current condition and remaining life before failure.
 
-```powershell
-irm https://raw.githubusercontent.com/Saroswat/nasa-cmapss-predictive-maintenance/main/scripts/setup-windows.ps1 | iex
-```
+EngineGuard focuses on the predictive-maintenance approach.
 
-Both setup scripts clone this repository, install [uv](https://docs.astral.sh/uv/) when needed, create an isolated Python environment, install the Python and Node.js dependencies, and download the dataset. The dashboard requires Node.js 22.13 or newer.
+The central question is:
 
-To retrain the models, refresh the dashboard data, and launch the web interface as part of setup:
+> **Can historical engine sensor data be used to estimate how much useful operating life remains and support maintenance decisions before failure?**
 
-**macOS Terminal**
+---
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/Saroswat/nasa-cmapss-predictive-maintenance/main/scripts/setup-macos.sh -o /tmp/setup-cmapss.sh
-bash /tmp/setup-cmapss.sh --run-experiment --start-dashboard
-```
+## 2. Main Objectives
 
-**Windows PowerShell**
+1. Predict the **Remaining Useful Life (RUL)** of turbofan engines.
+2. Convert RUL estimates into a practical **maintenance-risk decision**.
+3. Compare machine-learning models for RUL regression.
+4. Investigate the effect of different **temporal feature windows**.
+5. Explain model predictions using **SHAP-based Explainable AI**.
+6. Study the importance of cycle information using a **feature ablation experiment**.
+7. Present results through the EngineGuard dashboard.
 
-```powershell
-$setup = Join-Path $env:TEMP "setup-cmapss.ps1"
-Invoke-WebRequest https://raw.githubusercontent.com/Saroswat/nasa-cmapss-predictive-maintenance/main/scripts/setup-windows.ps1 -OutFile $setup
-& $setup -RunExperiment -StartDashboard
-```
+---
 
-Omit `--run-experiment` / `-RunExperiment` for the quick setup using the committed verified dashboard snapshot. Custom repository URLs and install locations are available through `--repository-url`, `--install-directory`, `-RepositoryUrl`, and `-InstallDirectory`.
+## 3. Dataset
 
-Run the complete experiment:
+### NASA C-MAPSS FD001
 
-```bash
-uv run cmapss-maintenance run
-```
+The project uses the **NASA C-MAPSS FD001** subset.
 
-Open the modern notebook:
+The dataset contains engine trajectories observed across operating cycles with multiple operating-condition and sensor variables.
 
-```bash
-uv run jupyter lab notebooks/01_modern_predictive_maintenance.ipynb
-```
+### Key concepts
 
-Run the standalone cross-platform notebook in VS Code, Jupyter, or Colab:
+- **Engine / unit:** one simulated turbofan engine trajectory.
+- **Cycle:** one operating-time step.
+- **Sensor:** a measured engine variable.
+- **RUL (Remaining Useful Life):** estimated number of cycles remaining before failure.
 
-[![Open portable notebook in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Saroswat/nasa-cmapss-predictive-maintenance/blob/main/notebooks/02_portable_end_to_end_cmapss.ipynb)
+No physical IoT hardware is required for this project because the sensor history is already provided by the benchmark dataset.
 
-```bash
-uv run jupyter lab notebooks/02_portable_end_to_end_cmapss.ipynb
-```
+---
 
-The portable notebook contains its own dependency bootstrap, verified dataset downloader, feature engineering, model selection, evaluation, plots, artifact serialization, and dashboard-data export. It is designed for Apple Silicon, Windows systems with or without NVIDIA GPUs, and the Google Colab free CPU tier.
-
-For the advanced operational decision-support workflow:
-
-[![Open operational notebook in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Saroswat/nasa-cmapss-predictive-maintenance/blob/main/notebooks/03_operational_cmapss_decision_support.ipynb)
-
-```bash
-uv run jupyter lab notebooks/03_operational_cmapss_decision_support.ipynb
-```
-
-This extension adds conformal RUL uncertainty, calibrated maintenance risk, telemetry quality gates, drift and out-of-distribution monitoring, persistent alerts, human-review overrides, capacity-aware work queues, decision logs, model fingerprints, monitoring reports, and an audit-oriented model card. It remains a research prototype and cannot determine aircraft airworthiness.
-
-Launch the fleet dashboard:
-
-```bash
-npm --prefix web run dev
-```
-
-Then open [http://localhost:3000](http://localhost:3000). The committed dashboard snapshot contains the verified FD001 results, so it works immediately after setup.
-
-## Repository layout
+## 4. System Architecture
 
 ```text
-.
-├── src/cmapss_maintenance/       Tested data, feature, model, metric, and reporting code
-├── notebooks/
-│   ├── 01_modern_predictive_maintenance.ipynb
-│   ├── 02_portable_end_to_end_cmapss.ipynb
-│   ├── 03_operational_cmapss_decision_support.ipynb
-│   └── archive/                  Original eighth-semester notebook
-├── tests/                        Fast unit and synthetic end-to-end tests
-├── scripts/                      Setup scripts and dashboard data exporter
-├── web/                          Responsive fleet intelligence dashboard
-├── .github/workflows/ci.yml      Cross-platform lint and test matrix
-└── artifacts/                    Generated locally and excluded from Git
+NASA C-MAPSS FD001
+        |
+        v
+Data Loading
+        |
+        v
+RUL Target Creation
+        |
+        v
+Feature Selection
+        |
+        v
+Temporal Feature Engineering
+(5 / 10 / 20 / 30 cycle windows)
+        |
+        +-----------------------+
+        |                       |
+        v                       v
+RUL Regression           Maintenance Classification
+        |                       |
+        v                       v
+Predicted RUL             Risk Probability
+        |                       |
+        +-----------+-----------+
+                    |
+                    v
+              Evaluation
+                    |
+          +---------+---------+
+          |         |         |
+          v         v         v
+       Metrics     SHAP    Error Analysis
+                    |
+                    v
+             EngineGuard Dashboard
 ```
 
-## Methodology
+---
 
-FD001 contains one operating condition and one high-pressure-compressor degradation mode. Training trajectories run to failure; test trajectories stop before failure and ship with a separate ground-truth RUL file.
+## 5. Machine-Learning Tasks
 
-The original notebook split individual rows after resampling. Because many rows belong to the same engine, that approach can place observations from one engine on both sides of the split and inflate validation performance. This implementation splits by `unit_number`, performs model selection only on held-out engines, and evaluates the final model on NASA's untouched FD001 test trajectories.
+### RUL Prediction — Regression
 
-The regression target is capped during training to represent an early-life healthy plateau. Official test metrics use the uncapped ground truth. Maintenance decisions are based on a probability threshold optimized on held-out engines with these configurable assumptions:
+RUL is a continuous numeric quantity, so the primary problem is a **regression problem**.
 
-| Outcome | Value |
-|---|---:|
-| Correctly schedule necessary maintenance | +$300,000 |
-| Schedule unnecessary maintenance | -$100,000 |
-| Miss necessary maintenance | -$200,000 |
-| Correctly take no action | $0 |
+The project compares:
 
-These figures are illustrative, not operational aviation guidance. Real deployment requires airline-specific costs, safety constraints, calibrated uncertainty, drift monitoring, and certification.
+- **Random Forest Regressor**
+- **Histogram Gradient Boosting Regressor**
 
-## Verified FD001 results
+Model selection is based on the validation **NASA score** used by the project.
 
-The following results were reproduced locally from the official FD001 test truth with the default configuration:
+### Maintenance Decision — Classification
 
-| Regression metric | Modern pipeline | Original notebook best RF |
+The maintenance component converts model outputs into a binary decision:
+
+- `0` → maintenance not predicted
+- `1` → maintenance predicted
+
+The system also uses a probability threshold to create the maintenance queue.
+
+---
+
+## 6. Feature Engineering
+
+The current feature-engineering pipeline uses causal rolling statistics calculated separately for each engine trajectory.
+
+For a temporal window of `N` cycles, the system derives sensor-history features such as:
+
+- rolling mean
+- rolling standard deviation
+
+The evaluated windows are:
+
+```text
+5 cycles
+10 cycles
+20 cycles
+30 cycles
+```
+
+A causal window uses only the current and previous observations, avoiding future information during prediction.
+
+Example:
+
+```text
+Current cycle = 50
+
+Valid history:
+46, 47, 48, 49, 50
+
+Not used:
+51, 52, ...
+```
+
+---
+
+# 7. Research Questions
+
+### RQ1 — Temporal History
+
+> How does the length of recent sensor history affect RUL prediction performance?
+
+### RQ2 — Explainability
+
+> Which features most strongly influence the model's RUL predictions?
+
+### RQ3 — Cycle Information
+
+> How much does `time_in_cycles` contribute to predictive performance?
+
+---
+
+# 8. Research Experiment 1 — Temporal Window Comparison
+
+The same experimental setup was used while changing only the temporal feature window.
+
+| Window | Selected Model | MAE ↓ | RMSE ↓ | R² ↑ | NASA Score ↓ |
+|---:|---|---:|---:|---:|---:|
+| 5 cycles | Random Forest | 13.49 | 18.61 | 0.799 | 630.41 |
+| 10 cycles | Random Forest | 14.35 | 19.31 | 0.784 | 707.65 |
+| 20 cycles | Random Forest | 13.72 | 18.58 | 0.800 | 706.23 |
+| **30 cycles** | **Hist. Gradient Boosting** | **13.15** | **16.91** | **0.834** | **453.17** |
+
+### Observation
+
+Among the four evaluated windows, the **30-cycle configuration produced the strongest observed test RUL performance**:
+
+- MAE = **13.15 cycles**
+- RMSE = **16.91 cycles**
+- R² = **0.834**
+- NASA Score = **453.17**
+
+This does not mean that 30 cycles is universally optimal. It is the strongest observed configuration within the evaluated FD001 setup.
+
+---
+
+# 9. Research Experiment 2 — Explainable AI with SHAP
+
+**SHAP (SHapley Additive exPlanations)** is used to interpret model predictions.
+
+The analysis was performed over **100 test engines** using the 30-cycle model.
+
+### Top global features
+
+| Rank | Feature | Mean Absolute SHAP |
+|---:|---|---:|
+| 1 | `time_in_cycles` | 11.097 |
+| 2 | `sensor_3_mean_30` | 9.084 |
+| 3 | `sensor_2_mean_30` | 4.120 |
+| 4 | `sensor_11_std_30` | 2.198 |
+| 5 | `sensor_14_std_30` | 2.111 |
+
+The global SHAP analysis shows that `time_in_cycles` and `sensor_3_mean_30` were the most influential variables, by mean absolute SHAP value, in the evaluated test set.
+
+> SHAP explains **model behavior**. A high SHAP contribution does not by itself prove that a feature is a physical cause of engine failure.
+
+### Engine 1 case study
+
+- Actual RUL: **112 cycles**
+- Predicted RUL: **122.65 cycles**
+- Prediction error: **+10.65 cycles**
+
+The largest individual SHAP contribution for this prediction came from `time_in_cycles`.
+
+---
+
+# 10. Research Experiment 3 — Ablation Study
+
+An ablation study removes one feature and measures how model performance changes.
+
+### 30-cycle configuration
+
+| Metric | With `time_in_cycles` | Without `time_in_cycles` |
 |---|---:|---:|
-| MAE (cycles, lower is better) | **13.72** | 16.49 |
-| RMSE (cycles, lower is better) | **18.77** | 21.34 |
-| R² (higher is better) | **0.796** | 0.74 |
-| NASA score (lower is better) | **621.68** | 868.02 |
+| Features | 48 | 47 |
+| Selected Model | Hist. Gradient Boosting | Hist. Gradient Boosting |
+| MAE ↓ | **13.15** | 13.27 |
+| RMSE ↓ | **16.91** | 17.65 |
+| R² ↑ | **0.834** | 0.820 |
+| NASA Score ↓ | **453.17** | 687.37 |
 
-At the 30-cycle maintenance horizon, the cost-aware policy produced 24 true positives, 67 true negatives, 8 false positives, and 1 false negative. Under the illustrative cost matrix above, that is an expected value of **$6.2 million** across the 100 test engines.
+### Observation
 
-## Commands
+Removing `time_in_cycles` degraded the observed test performance, particularly the NASA score.
+
+This suggests that cycle-index information contributes predictive information in the evaluated FD001 setup.
+
+The result should be interpreted as **model-level predictive dependence**, not as proof of physical causation.
+
+---
+
+# 11. Maintenance Decision Results
+
+The current 30-cycle configuration produced the following test classification results:
+
+| Metric | Value |
+|---|---:|
+| Maintenance threshold | 11% |
+| True Positives (TP) | 25 |
+| True Negatives (TN) | 70 |
+| False Positives (FP) | 5 |
+| False Negatives (FN) | 0 |
+| Classification accuracy | 95% |
+| Expected value* | $7.0M |
+
+\*The expected-value figure comes from the project's illustrative maintenance-cost assumptions. It is not a measured real-world financial saving.
+
+The observed test classification accuracy is:
+
+```text
+(TP + TN) / Total
+= (25 + 70) / 100
+= 95%
+```
+
+---
+
+# 12. Evaluation Metrics
+
+### MAE — Mean Absolute Error
+
+Average absolute difference between predicted and actual RUL.
+
+**Lower is better.**
+
+### RMSE — Root Mean Squared Error
+
+Penalizes larger prediction errors more strongly than MAE.
+
+**Lower is better.**
+
+### R² — Coefficient of Determination
+
+Measures how much of the variation in the target is explained by the model.
+
+**Higher is better.**
+
+### NASA Score
+
+An asymmetric RUL evaluation metric used in the C-MAPSS predictive-maintenance setting.
+
+**Lower is better.**
+
+### Classification Accuracy
+
+For the maintenance classifier:
+
+```text
+Accuracy = (TP + TN) / (TP + TN + FP + FN)
+```
+
+---
+
+# 13. EngineGuard Dashboard
+
+The web dashboard provides four main views.
+
+### Fleet Overview
+
+Shows:
+
+- number of engines assessed,
+- predicted fleet RUL summary,
+- maintenance queue,
+- risk distribution,
+- search and filtering.
+
+### Maintenance
+
+Shows:
+
+- engines in the maintenance queue,
+- priority categories,
+- predicted RUL,
+- maintenance risk.
+
+### Model Health
+
+Shows:
+
+- MAE,
+- RMSE,
+- R²,
+- NASA score,
+- model comparison,
+- feature influence.
+
+### Research Findings
+
+Shows:
+
+- temporal-window comparison,
+- ablation-study results,
+- SHAP findings,
+- research conclusion.
+
+---
+
+# 14. Technology Stack
+
+### Machine Learning / Data
+
+- Python
+- NumPy
+- pandas
+- scikit-learn
+- SHAP
+- joblib
+
+### Project / Environment
+
+- `uv`
+- pytest
+
+### Dashboard
+
+- React
+- TypeScript
+- Vinext
+- Vite
+- Recharts
+
+### Data Format
+
+- CSV / structured tabular data
+- JSON dashboard export
+
+---
+
+# 15. Project Structure
+
+```text
+nasa-cmapss-predictive-maintenance/
+│
+├── data/
+│   └── raw/
+│
+├── artifacts/
+│   ├── metrics.json
+│   └── fd001_models.joblib
+│
+├── research/
+│   ├── baseline_50_estimators.json
+│   ├── window_5.json
+│   ├── window_10.json
+│   ├── window_20.json
+│   ├── window_30.json
+│   ├── window_30_without_time.json
+│   ├── shap_analysis.py
+│   ├── shap_global_feature_importance.csv
+│   ├── shap_engine_1.csv
+│   ├── shap_global_importance.png
+│   ├── shap_engine_1_explanation.png
+│   └── plot_shap.py
+│
+├── scripts/
+│   └── export_dashboard_data.py
+│
+├── src/
+│   └── cmapss_maintenance/
+│       ├── config.py
+│       ├── data.py
+│       ├── features.py
+│       ├── metrics.py
+│       └── modeling.py
+│
+├── web/
+│   ├── app/
+│   │   ├── layout.tsx
+│   │   └── page.tsx
+│   ├── public/
+│   │   └── data/
+│   │       └── dashboard.json
+│   └── tests/
+│
+├── pyproject.toml
+├── uv.lock
+└── README.md
+```
+
+---
+
+# 16. Reproducibility
+
+### Run the Python test suite
+
+From the project root:
 
 ```bash
-# Download only
-uv run cmapss-maintenance download
-
-# Run with the default 300 estimators
-uv run cmapss-maintenance run
-
-# Faster development run
-uv run cmapss-maintenance run --estimators 50
-
-# Refresh the web dashboard from the latest trained artifacts
-uv run python scripts/export_dashboard_data.py
-
-# Run the web dashboard
-npm --prefix web run dev
-
-# Quality checks
-uv run ruff check .
-uv run pytest --cov=cmapss_maintenance
-npm --prefix web run lint
-npm --prefix web test
+uv run --with pytest pytest
 ```
 
-Generated files appear in `artifacts/`:
+Expected baseline result:
 
-- `metrics.json`
-- `fd001_predictions.csv`
-- `fd001_models.joblib`
-- `rul_predictions.png`
-- `maintenance_confusion_matrix.png`
-- `feature_importance.png` when supported by the selected model
+```text
+6 passed
+```
 
-## Data and citation
+### Train / run the FD001 experiment
 
-The dataset is downloaded from the [NASA Open Data Portal](https://data.nasa.gov/dataset/cmapss-jet-engine-simulated-data). Because NASA's legacy ZIP endpoint can be intermittently unavailable, the downloader falls back to the same FD001 files in a commit-pinned public mirror. Every downloaded file is checked against a repository-pinned SHA-256 digest. Data files are not committed to this repository.
+```bash
+uv run cmapss-maintenance run --estimators 50 --skip-download
+```
 
-Please cite the original benchmark:
+### Export dashboard data
 
-> A. Saxena, K. Goebel, D. Simon, and N. Eklund, "Damage Propagation Modeling for Aircraft Engine Run-to-Failure Simulation," Proceedings of the First International Conference on Prognostics and Health Management, 2008.
+```bash
+uv run python scripts/export_dashboard_data.py
+```
 
-The MIT license in this repository applies to the project code, not to NASA's dataset.
+### Run SHAP analysis
 
-## Reproducibility notes
+```bash
+uv run python research/shap_analysis.py
+```
 
-- Random seeds are fixed in `ExperimentConfig`.
-- CI tests Python 3.11 and 3.12 on Ubuntu, Windows, and macOS.
-- `uv.lock` captures the resolved cross-platform dependency graph.
-- The original notebook is retained unchanged for provenance.
+### Generate SHAP plots
+
+```bash
+uv run python research/plot_shap.py
+```
+
+### Run the dashboard in development mode on Windows Git Bash
+
+From `web/`:
+
+```bash
+export WRANGLER_LOG_PATH=.wrangler/wrangler.log
+npx vinext dev
+```
+
+Then open:
+
+```text
+http://localhost:3000
+```
+
+---
+
+# 17. Research Conclusion
+
+The experiments demonstrate that temporal feature-window selection affects turbofan RUL prediction performance. Among the evaluated 5-, 10-, 20-, and 30-cycle windows, the 30-cycle configuration produced the strongest observed test results, achieving an MAE of 13.15 cycles, RMSE of 16.91 cycles, R² of 0.834, and NASA score of 453.17.
+
+The results also show that a longer history does not automatically improve performance. The selected regression model changed with the temporal representation, with Histogram Gradient Boosting selected for the 30-cycle configuration according to the validation NASA score.
+
+The ablation experiment showed that removing `time_in_cycles` degraded test performance, while SHAP analysis identified `time_in_cycles` and `sensor_3_mean_30` as the most influential features by mean absolute SHAP value across the evaluated test engines.
+
+Overall, the study indicates that temporal feature representation, feature selection, and model interpretability are important components of turbofan RUL prediction. The conclusions are limited to the evaluated NASA C-MAPSS FD001 dataset and experimental configuration.
+
+---
+
+# 18. Current Limitations
+
+- Evaluation is currently focused on **FD001**.
+- The experiments use a fixed set of tested temporal windows: 5, 10, 20, and 30 cycles.
+- Reported results are from the current experimental configuration and should not be generalized automatically to other datasets.
+- The maintenance-value calculation uses illustrative project cost assumptions.
+- SHAP describes model behavior and does not establish physical causality.
+
+---
+
+# 19. Future Work
+
+Possible future extensions include:
+
+- evaluation on additional C-MAPSS subsets such as FD002, FD003, and FD004,
+- robustness checks across multiple random seeds,
+- uncertainty estimation and prediction intervals,
+- richer temporal models such as recurrent or attention-based architectures,
+- more detailed fleet-level SHAP analysis,
+- deployment-oriented monitoring and alerting.
+
+---
+
+## Acknowledgement
+
+This project is a research and application extension of an existing NASA C-MAPSS predictive-maintenance implementation. The original reference repository is:
+
+https://github.com/Saroswat/nasa-cmapss-predictive-maintenance
+
+The EngineGuard research extensions include configurable temporal windows, SHAP-based explainability, feature ablation analysis, research-result artifacts, and an integrated research dashboard.

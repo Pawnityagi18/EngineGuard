@@ -10,13 +10,17 @@ def select_feature_columns(frame: pd.DataFrame, *, variance_floor: float = 1e-12
     return [column for column in candidates if float(frame[column].var()) > variance_floor]
 
 
-def add_health_features(frame: pd.DataFrame, feature_columns: list[str]) -> pd.DataFrame:
+def add_health_features(
+    frame: pd.DataFrame,
+    feature_columns: list[str],
+    window: int = 5,
+) -> pd.DataFrame:
     """Add causal rolling features computed independently for each engine."""
     result = frame.copy()
     grouped = result.groupby("unit_number", sort=False)
     sensor_columns = [column for column in feature_columns if column.startswith("sensor_")]
     for column in sensor_columns:
-        rolling = grouped[column].rolling(window=5, min_periods=1)
-        result[f"{column}_mean_5"] = rolling.mean().reset_index(level=0, drop=True)
-        result[f"{column}_std_5"] = rolling.std(ddof=0).reset_index(level=0, drop=True).fillna(0.0)
+        rolling = grouped[column].rolling(window=window, min_periods=1)
+        result[f"{column}_mean_{window}"] = rolling.mean().reset_index(level=0, drop=True)
+        result[f"{column}_std_{window}"] = rolling.std(ddof=0).reset_index(level=0, drop=True).fillna(0.0)
     return result
