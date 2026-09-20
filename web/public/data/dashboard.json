@@ -1,7 +1,7 @@
 {
   "meta": {
     "dataset": "NASA C-MAPSS FD001",
-    "generatedAt": "2026-09-20T06:42:00.759442+00:00",
+    "generatedAt": "2026-09-20T07:17:22.093772+00:00",
     "model": "Hist Gradient Boosting",
     "threshold": 0.10999999999999999,
     "maintenanceHorizon": 30
@@ -48,7 +48,48 @@
       }
     }
   },
-  "featureImportance": [],
+  "featureImportance": [
+    {
+      "feature": "time_in_cycles",
+      "importance": 0.297266
+    },
+    {
+      "feature": "sensor_3_mean_30",
+      "importance": 0.243326
+    },
+    {
+      "feature": "sensor_2_mean_30",
+      "importance": 0.110353
+    },
+    {
+      "feature": "sensor_11_std_30",
+      "importance": 0.058888
+    },
+    {
+      "feature": "sensor_14_std_30",
+      "importance": 0.056546
+    },
+    {
+      "feature": "sensor_11",
+      "importance": 0.053136
+    },
+    {
+      "feature": "sensor_4_mean_30",
+      "importance": 0.049734
+    },
+    {
+      "feature": "sensor_4",
+      "importance": 0.045002
+    },
+    {
+      "feature": "sensor_13_std_30",
+      "importance": 0.043987
+    },
+    {
+      "feature": "sensor_12_std_30",
+      "importance": 0.041762
+    }
+  ],
   "engines": [
     {
       "id": 1,
@@ -4606,7 +4647,7 @@
       "cycle": 156,
       "actualRul": 10.0,
       "predictedRul": 15.612200060734352,
-      "risk": 0.8688463987417236,
+      "risk": 0.8688463987417235,
       "recommended": true,
       "actualMaintenance": true,
       "history": [
@@ -9934,7 +9975,7 @@
       "cycle": 146,
       "actualRul": 28.0,
       "predictedRul": 36.47319903208662,
-      "risk": 0.43712752755719203,
+      "risk": 0.4371275275571921,
       "recommended": true,
       "actualMaintenance": true,
       "history": [
@@ -11044,7 +11085,7 @@
       "cycle": 198,
       "actualRul": 20.0,
       "predictedRul": 29.484935011903705,
-      "risk": 0.872011325529395,
+      "risk": 0.8720113255293949,
       "recommended": true,
       "actualMaintenance": true,
       "history": [

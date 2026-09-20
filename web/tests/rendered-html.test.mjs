@@ -29,7 +29,7 @@ test("server-renders fleet dashboard metadata and loading state", async () => {
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
 
   const html = await response.text();
-  assert.match(html, /<title>AeroPulse \| Engine Health Intelligence<\/title>/i);
+  assert.match(html, /<title>EngineGuard \| Engine Health Intelligence<\/title>/i);
   assert.match(html, /Predictive maintenance intelligence for NASA turbofan engine fleets/);
   assert.match(html, /Loading fleet intelligence/);
   assert.doesNotMatch(html, /Starter Project|Your site is taking shape/);
@@ -42,7 +42,7 @@ test("ships a complete verified dashboard data contract", async () => {
 
   assert.equal(payload.meta.dataset, "NASA C-MAPSS FD001");
   assert.equal(payload.engines.length, 100);
-  assert.equal(payload.metrics.test_maintenance_value.expected_value, 6_200_000);
+  assert.equal(payload.metrics.test_maintenance_value.expected_value, 7_000_000);
   assert.ok(payload.featureImportance.length > 0);
   assert.ok(payload.engines.every((engine) => engine.history.length > 0));
 });

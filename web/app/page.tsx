@@ -391,7 +391,7 @@ export default function Home() {
             </section>
             <section className="model-grid">
               <div className="panel chart-panel">
-                <div className="panel-heading"><div><h2>Validation comparison</h2><p>Held-out engine checkpoints</p></div><span className="data-chip">Selected: RF</span></div>
+                <div className="panel-heading"><div><h2>Validation comparison</h2><p>Held-out engine checkpoints</p></div><span className="data-chip">Selected: HGB</span></div>
                 <div className="chart-wrap">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={Object.entries(data.metrics.validation_regression).map(([name, values]) => ({ name: name === "random_forest" ? "Random forest" : "Hist. boosting", MAE: values.mae, RMSE: values.rmse }))} margin={{ top: 14, right: 8, left: -16, bottom: 0 }}>
@@ -406,7 +406,7 @@ export default function Home() {
                 </div>
               </div>
               <div className="panel feature-panel">
-                <div className="panel-heading"><div><h2>Feature influence</h2><p>Top random forest signals</p></div><span className="data-chip">{data.metrics.feature_count} total</span></div>
+                <div className="panel-heading"><div><h2>Feature influence</h2><p>Global feature influence (SHAP)</p></div><span className="data-chip">{data.metrics.feature_count} total</span></div>
                 <div className="feature-list">
                   {data.featureImportance.map((item, index) => (
                     <div className="feature-row" key={item.feature}>

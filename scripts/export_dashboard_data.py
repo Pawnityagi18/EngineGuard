@@ -83,6 +83,19 @@ def main() -> None:
         feature_importance = [
             {"feature": name, "importance": round(float(value), 6)} for name, value in ranked
         ]
+    else:
+        shap_path = Path("research/shap_global_feature_importance.csv")
+        if shap_path.exists():
+            import pandas as pd
+            shap_ranked = pd.read_csv(shap_path).head(10)
+            total = float(shap_ranked["mean_abs_shap"].sum())
+            feature_importance = [
+                {
+                    "feature": str(row["feature"]),
+                    "importance": round(float(row["mean_abs_shap"]) / total, 6),
+                }
+                for _, row in shap_ranked.iterrows()
+            ]
 
     payload = {
         "meta": {
