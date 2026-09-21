@@ -183,11 +183,11 @@ export default function Home() {
   const distribution = useMemo(() => {
     if (!data) return [];
     const buckets = [
-      { label: "0Ã¢â‚¬â€œ20%", min: 0, max: 0.2, count: 0, color: "#2f766d" },
-      { label: "20Ã¢â‚¬â€œ40%", min: 0.2, max: 0.4, count: 0, color: "#6b8c72" },
-      { label: "40Ã¢â‚¬â€œ60%", min: 0.4, max: 0.6, count: 0, color: "#c79a38" },
-      { label: "60Ã¢â‚¬â€œ80%", min: 0.6, max: 0.8, count: 0, color: "#d26945" },
-      { label: "80Ã¢â‚¬â€œ100%", min: 0.8, max: 1.01, count: 0, color: "#b5473e" },
+      { label: "0–20%", min: 0, max: 0.2, count: 0, color: "#2f766d" },
+      { label: "20–40%", min: 0.2, max: 0.4, count: 0, color: "#6b8c72" },
+      { label: "40–60%", min: 0.4, max: 0.6, count: 0, color: "#c79a38" },
+      { label: "60–80%", min: 0.6, max: 0.8, count: 0, color: "#d26945" },
+      { label: "80–100%", min: 0.8, max: 1.01, count: 0, color: "#b5473e" },
     ];
     data.engines.forEach((engine) => {
       const bucket = buckets.find((item) => engine.risk >= item.min && engine.risk < item.max);
@@ -393,7 +393,7 @@ export default function Home() {
             <section className="metric-grid model-metrics">
               <Metric icon={Gauge} label="MAE" value={data.metrics.test_regression.mae.toFixed(2)} detail="cycles" />
               <Metric icon={Activity} label="RMSE" value={data.metrics.test_regression.rmse.toFixed(2)} detail="cycles" />
-              <Metric icon={BarChart3} label="RÃ‚Â²" value={data.metrics.test_regression.r2.toFixed(3)} detail="official test set" tone="positive" />
+              <Metric icon={BarChart3} label="R²" value={data.metrics.test_regression.r2.toFixed(3)} detail="official test set" tone="positive" />
               <Metric icon={ShieldCheck} label="NASA score" value={data.metrics.test_regression.nasa_score.toFixed(2)} detail="lower is better" />
             </section>
             <section className="model-grid">
@@ -565,7 +565,7 @@ export default function Home() {
               />
               <Metric
                 icon={Activity}
-                label="Best observed RÃ‚Â²"
+                label="Best observed R²"
                 value="0.834"
                 detail="test set"
               />
@@ -593,10 +593,10 @@ export default function Home() {
                     <tr>
                       <th>Window</th>
                       <th>Selected Model</th>
-                      <th>MAE Ã¢â€ â€œ</th>
-                      <th>RMSE Ã¢â€ â€œ</th>
-                      <th>RÃ‚Â² Ã¢â€ â€˜</th>
-                      <th>NASA Score Ã¢â€ â€œ</th>
+                      <th>MAE ↓</th>
+                      <th>RMSE ↓</th>
+                      <th>R² ↑</th>
+                      <th>NASA Score ↓</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -658,11 +658,11 @@ export default function Home() {
                   </div>
                   <div>
                     <span>MAE change</span>
-                    <strong>13.15 Ã¢â€ â€™ 13.27</strong>
+                    <strong>13.15 → 13.27</strong>
                   </div>
                   <div>
-                    <span>RÃ‚Â² change</span>
-                    <strong>0.834 Ã¢â€ â€™ 0.820</strong>
+                    <span>R² change</span>
+                    <strong>0.834 → 0.820</strong>
                   </div>
                 </div>
 
@@ -747,7 +747,7 @@ export default function Home() {
                 the tested 5-, 10-, 20- and 30-cycle windows, the 30-cycle
                 configuration produced the strongest observed test results,
                 achieving an MAE of 13.15 cycles, RMSE of 16.91 cycles,
-                RÃ‚Â² of 0.834 and NASA score of 453.17.
+                R² of 0.834 and NASA score of 453.17.
               </p>
 
               <p style={{ fontSize: "15px", lineHeight: 1.75 }}>
