@@ -72,7 +72,7 @@ type DashboardData = {
   engines: Engine[];
 };
 
-type View = "overview" | "maintenance" | "model" | "research";
+type View = "overview" | "maintenance" | "model" | "research" | "live";
 type RiskFilter = "all" | "critical" | "watch" | "stable";
 
 const compactCurrency = new Intl.NumberFormat("en-US", {
@@ -130,6 +130,10 @@ function EmptyState({ message }: { message: string }) {
 }
 
 export default function Home() {
+  const [liveFile, setLiveFile] = useState<File | null>(null);
+  const [liveLoading, setLiveLoading] = useState(false);
+  const [liveError, setLiveError] = useState<string | null>(null);
+  const [liveResult, setLiveResult] = useState<any>(null);
   const [data, setData] = useState<DashboardData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<View>("overview");
@@ -179,11 +183,11 @@ export default function Home() {
   const distribution = useMemo(() => {
     if (!data) return [];
     const buckets = [
-      { label: "0â€“20%", min: 0, max: 0.2, count: 0, color: "#2f766d" },
-      { label: "20â€“40%", min: 0.2, max: 0.4, count: 0, color: "#6b8c72" },
-      { label: "40â€“60%", min: 0.4, max: 0.6, count: 0, color: "#c79a38" },
-      { label: "60â€“80%", min: 0.6, max: 0.8, count: 0, color: "#d26945" },
-      { label: "80â€“100%", min: 0.8, max: 1.01, count: 0, color: "#b5473e" },
+      { label: "0Ã¢â‚¬â€œ20%", min: 0, max: 0.2, count: 0, color: "#2f766d" },
+      { label: "20Ã¢â‚¬â€œ40%", min: 0.2, max: 0.4, count: 0, color: "#6b8c72" },
+      { label: "40Ã¢â‚¬â€œ60%", min: 0.4, max: 0.6, count: 0, color: "#c79a38" },
+      { label: "60Ã¢â‚¬â€œ80%", min: 0.6, max: 0.8, count: 0, color: "#d26945" },
+      { label: "80Ã¢â‚¬â€œ100%", min: 0.8, max: 1.01, count: 0, color: "#b5473e" },
     ];
     data.engines.forEach((engine) => {
       const bucket = buckets.find((item) => engine.risk >= item.min && engine.risk < item.max);
@@ -216,6 +220,7 @@ export default function Home() {
   { id: "maintenance" as const, label: "Maintenance", icon: Wrench },
   { id: "model" as const, label: "Model health", icon: BarChart3 },
   { id: "research" as const, label: "Research findings", icon: BarChart3 },
+  { id: "live" as const, label: "Live prediction", icon: Activity },
 ];
 
   const queue = data.engines
@@ -262,7 +267,9 @@ export default function Home() {
       ? "Maintenance queue"
       : view === "model"
         ? "Model health"
-        : "Research findings"}
+        : view === "research"
+          ? "Research findings"
+          : "Live prediction"}
 </h1>
           </div>
           <div className="topbar-actions">
@@ -386,7 +393,7 @@ export default function Home() {
             <section className="metric-grid model-metrics">
               <Metric icon={Gauge} label="MAE" value={data.metrics.test_regression.mae.toFixed(2)} detail="cycles" />
               <Metric icon={Activity} label="RMSE" value={data.metrics.test_regression.rmse.toFixed(2)} detail="cycles" />
-              <Metric icon={BarChart3} label="RÂ²" value={data.metrics.test_regression.r2.toFixed(3)} detail="official test set" tone="positive" />
+              <Metric icon={BarChart3} label="RÃ‚Â²" value={data.metrics.test_regression.r2.toFixed(3)} detail="official test set" tone="positive" />
               <Metric icon={ShieldCheck} label="NASA score" value={data.metrics.test_regression.nasa_score.toFixed(2)} detail="lower is better" />
             </section>
             <section className="model-grid">
@@ -421,6 +428,125 @@ export default function Home() {
           </>
         )}
 
+        {view === "live" && (
+          <section className="space-y-6">
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Live inference</p>
+                  <h2 className="mt-2 text-xl font-semibold text-slate-900">Predict from new sensor data</h2>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                    Upload a CSV containing at least 30 sequential engine cycles. EngineGuard uses the trained model to estimate Remaining Useful Life (RUL) and maintenance risk without retraining.
+                  </p>
+                </div>
+                <div className="rounded-xl bg-slate-50 px-3 py-2 text-xs font-medium text-slate-600">30-cycle window</div>
+              </div>
+
+              <div className="mt-6 rounded-xl border-2 border-dashed border-slate-200 p-8 text-center">
+                <input id="live-csv-upload" type="file" accept=".csv,text/csv" className="hidden" onChange={(e) => { const file = e.target.files?.[0] ?? null; setLiveFile(file); setLiveError(null); setLiveResult(null); }} />
+                <label htmlFor="live-csv-upload" className="inline-flex cursor-pointer items-center rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800">
+                  Choose CSV file
+                </label>
+                <p className="mt-3 text-xs text-slate-500">CSV format compatible with NASA C-MAPSS sensor data</p>
+                {liveFile && (
+                  <div className="mt-5">
+                    <p className="mb-3 text-sm font-medium text-slate-700">Selected: {liveFile.name}</p>
+                    <button
+                      type="button"
+                      disabled={liveLoading}
+                      onClick={async () => {
+                        setLiveLoading(true);
+                        setLiveError(null);
+                        setLiveResult(null);
+                        try {
+                          const csv = await liveFile.text();
+                          const response = await fetch("http://127.0.0.1:8000/predict", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ csv, explain: true }),
+                          });
+                          const result = await response.json();
+                          if (response.status < 200 || response.status >= 300 || result.success !== true) {
+                            throw new Error(result.error || "Prediction failed");
+                          }
+                          setLiveResult(result);
+                        } catch (error) {
+                          setLiveError(error instanceof Error ? error.message : "Unable to connect to the prediction server");
+                        } finally {
+                          setLiveLoading(false);
+                        }
+                      }}
+                      className="rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {liveLoading ? "Running prediction..." : "Predict RUL & maintenance risk"}
+                    </button>
+                  </div>
+                )}
+
+                {liveError && (
+                  <p className="mt-4 text-sm font-medium text-red-600">{liveError}</p>
+                )}
+
+                {liveResult?.latest && (
+                  <div className="mt-6 grid gap-4 md:grid-cols-3">
+                    <div className="rounded-xl border border-slate-200 bg-white p-5 text-left shadow-sm">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Predicted RUL</p>
+                      <p className="mt-2 text-3xl font-bold text-slate-900">{Number(liveResult.latest.predictedRUL).toFixed(1)}</p>
+                      <p className="mt-1 text-xs text-slate-500">cycles remaining</p>
+                    </div>
+                    <div className="rounded-xl border border-slate-200 bg-white p-5 text-left shadow-sm">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Maintenance risk</p>
+                      <p className="mt-2 text-3xl font-bold text-[#287c72]">{(Number(liveResult.latest.maintenanceProbability) * 100).toFixed(1)}%</p>
+                      <p className="mt-1 text-xs text-slate-500">predicted probability</p>
+                    </div>
+                    <div className="rounded-xl border border-slate-200 bg-white p-5 text-left shadow-sm">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Status</p>
+                      <p className="mt-2 text-3xl font-bold text-[#287c72]">{liveResult.latest.status}</p>
+                      <p className="mt-1 text-xs text-slate-500">latest cycle: {liveResult.latest.cycle}</p>
+                    </div>
+                  </div>
+                )}
+
+                {liveResult?.predictions?.length > 0 && (                  <div className="mb-6 rounded-xl border border-slate-200 bg-white p-5 text-left shadow-sm">                    <div className="mb-4">                      <p className="text-sm font-semibold text-slate-900">Predicted RUL trend</p>                      <p className="mt-1 text-xs text-slate-500">Estimated remaining useful life across the uploaded cycles</p>                    </div>                    <div className="h-64 w-full">                      <ResponsiveContainer width="100%" height="100%">                        <LineChart data={liveResult.predictions} margin={{ top: 10, right: 12, left: -22, bottom: 0 }}>                          <CartesianGrid stroke="#e7e9e8" vertical={false} />                          <XAxis dataKey="cycle" tickLine={false} axisLine={false} fontSize={11} />                          <YAxis tickLine={false} axisLine={false} fontSize={11} />                          <Tooltip formatter={(value) => String(Number(value).toFixed(1)) + " cycles"} />                          <Line type="monotone" dataKey="predictedRUL" name="Predicted RUL" stroke="#287271" strokeWidth={2.5} dot={false} />                        </LineChart>                      </ResponsiveContainer>                    </div>                  </div>                )}                {liveResult?.predictions?.length > 0 && (
+                  <div className="mt-6 rounded-xl border border-slate-200 bg-white p-5 text-left shadow-sm">
+                    <div className="mb-4">
+                      <p className="text-sm font-semibold text-slate-900">Model maintenance probability trend</p>
+                      <p className="mt-1 text-xs text-slate-500">Predicted maintenance probability across the uploaded cycles</p>
+                    </div>
+                    <div className="h-64 w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={liveResult.predictions} margin={{ top: 10, right: 12, left: -22, bottom: 0 }}>
+                          <CartesianGrid stroke="#e7e9e8" vertical={false} />
+                          <XAxis dataKey="cycle" tickLine={false} axisLine={false} fontSize={11} />
+                          <YAxis domain={[0, 1]} tickFormatter={(value) => String(Math.round(value * 100)) + "%"} tickLine={false} axisLine={false} fontSize={11} />
+                          <Tooltip formatter={(value) => String((Number(value) * 100).toFixed(1)) + "%"} />
+                          <Line type="monotone" dataKey="maintenanceProbability" name="Maintenance probability" stroke="#287271" strokeWidth={2.5} dot={false} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                )}
+
+                {liveResult?.explanation?.length > 0 && (
+                  <div className="mt-6 rounded-xl border border-slate-200 p-5 text-left">
+                    <p className="text-sm font-semibold text-slate-900">Top explanation features</p>
+                    <div className="mt-4 space-y-3">
+                      {liveResult.explanation.map((item: { feature: string; impact: number }) => (
+                        <div key={item.feature} className="flex items-center justify-between gap-4 text-sm">
+                          <span className="font-medium text-slate-700">{item.feature}</span>
+                          <span className="font-semibold text-slate-900">{Number(item.impact).toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+
+              </div>
+            </div>
+          </section>
+        )}
+
         {view === "research" && (
           <>
             <section className="metric-grid">
@@ -439,7 +565,7 @@ export default function Home() {
               />
               <Metric
                 icon={Activity}
-                label="Best observed RÂ²"
+                label="Best observed RÃ‚Â²"
                 value="0.834"
                 detail="test set"
               />
@@ -467,10 +593,10 @@ export default function Home() {
                     <tr>
                       <th>Window</th>
                       <th>Selected Model</th>
-                      <th>MAE â†“</th>
-                      <th>RMSE â†“</th>
-                      <th>RÂ² â†‘</th>
-                      <th>NASA Score â†“</th>
+                      <th>MAE Ã¢â€ â€œ</th>
+                      <th>RMSE Ã¢â€ â€œ</th>
+                      <th>RÃ‚Â² Ã¢â€ â€˜</th>
+                      <th>NASA Score Ã¢â€ â€œ</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -532,11 +658,11 @@ export default function Home() {
                   </div>
                   <div>
                     <span>MAE change</span>
-                    <strong>13.15 â†’ 13.27</strong>
+                    <strong>13.15 Ã¢â€ â€™ 13.27</strong>
                   </div>
                   <div>
-                    <span>RÂ² change</span>
-                    <strong>0.834 â†’ 0.820</strong>
+                    <span>RÃ‚Â² change</span>
+                    <strong>0.834 Ã¢â€ â€™ 0.820</strong>
                   </div>
                 </div>
 
@@ -621,7 +747,7 @@ export default function Home() {
                 the tested 5-, 10-, 20- and 30-cycle windows, the 30-cycle
                 configuration produced the strongest observed test results,
                 achieving an MAE of 13.15 cycles, RMSE of 16.91 cycles,
-                RÂ² of 0.834 and NASA score of 453.17.
+                RÃ‚Â² of 0.834 and NASA score of 453.17.
               </p>
 
               <p style={{ fontSize: "15px", lineHeight: 1.75 }}>
