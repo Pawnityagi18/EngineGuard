@@ -323,7 +323,7 @@ Accuracy = (TP + TN) / (TP + TN + FP + FN)
 
 # 13. EngineGuard Dashboard
 
-The web dashboard provides four main views.
+The web dashboard provides five main views.
 
 ### Fleet Overview
 
@@ -363,6 +363,21 @@ Shows:
 - ablation-study results,
 - SHAP findings,
 - research conclusion.
+
+### Live Prediction
+
+Allows users to upload a CSV containing recent engine-cycle data and obtain:
+
+- predicted Remaining Useful Life (RUL),
+- model maintenance probability,
+- predicted maintenance status,
+- RUL trend across uploaded cycles,
+- maintenance-probability trend,
+- SHAP-based feature explanation for the latest prediction.
+
+The live inference service uses the trained FD001 model artifact and the same 30-cycle temporal feature window used in the research experiments.
+
+> **Important:** The maintenance probability shown by the dashboard is the probability produced by the project's trained maintenance classifier. It should not be interpreted as a calibrated real-world probability of physical engine failure.
 
 ---
 
@@ -424,7 +439,8 @@ nasa-cmapss-predictive-maintenance/
 │   └── plot_shap.py
 │
 ├── scripts/
-│   └── export_dashboard_data.py
+│   ├── export_dashboard_data.py
+│   └── live_inference_server.py
 │
 ├── src/
 │   └── cmapss_maintenance/
@@ -489,6 +505,24 @@ uv run python research/shap_analysis.py
 ```bash
 uv run python research/plot_shap.py
 ```
+
+### Run the Live Inference API
+
+From the project root:
+
+
+
+The API runs at:
+
+
+
+Health check:
+
+
+
+The live prediction endpoint accepts CSV data containing the expected FD001 feature columns.
+
+The uploaded sequence must contain at least **30 cycles**, because the deployed research model uses a 30-cycle temporal feature window.
 
 ### Run the dashboard in development mode on Windows Git Bash
 
